@@ -1,0 +1,30 @@
+# Environment
+.env
+.DS_Store
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project specific
+data/chroma_db/
+*.log
+.pytest_cache/
+htmlcov/
+coverage.xml
+
+# OS
+Thumbs.db

@@ -1,0 +1,277 @@
+[
+  {
+    "case_id": 1,
+    "name": "Full Table Scan - Large Dataset",
+    "query": "SELECT * FROM policy_data",
+    "execution_time_ms": 45000,
+    "frequency_per_hour": 10,
+    "severity": "critical",
+    "context": {
+      "table_rows": 5000000,
+      "table_size_mb": 2800,
+      "has_filter": false,
+      "has_index": false,
+      "index_available": ["policy_id", "state", "status"],
+      "description": "Query retrieves entire policy table with no WHERE clause"
+    },
+    "root_causes": [
+      "No WHERE clause filtering",
+      "No index on common filter columns",
+      "Full sequential scan required"
+    ],
+    "suggested_optimizations": [
+      "Add WHERE clause to filter by status='ACTIVE'",
+      "Create index on 'status' column",
+      "Use LIMIT clause if pagination is possible",
+      "Consider materialized view for common queries"
+    ],
+    "expected_improvement_percent": 85
+  },
+  {
+    "case_id": 2,
+    "name": "JSON Field Filtering Without Index",
+    "query": "SELECT * FROM policy_data WHERE JSON_EXTRACT(data, '$.policy.state') = 'CA'",
+    "execution_time_ms": 25000,
+    "frequency_per_hour": 80,
+    "severity": "high",
+    "context": {
+      "table_rows": 3000000,
+      "json_field": "data",
+      "json_path": "$.policy.state",
+      "matching_rows": 450000,
+      "has_json_index": false,
+      "description": "Filtering on JSON field without index - slow for high frequency"
+    },
+    "root_causes": [
+      "JSON_EXTRACT cannot use traditional indexes",
+      "High query frequency amplifies overhead",
+      "Entire table scan required for JSON comparison"
+    ],
+    "suggested_optimizations": [
+      "Create generated column: state_gen AS JSON_EXTRACT(data, '$.policy.state')",
+      "Index the generated column",
+      "Denormalize: store state in separate column",
+      "Use JSON_TABLE for better optimization"
+    ],
+    "expected_improvement_percent": 70
+  },
+  {
+    "case_id": 3,
+    "name": "Complex Join With JSON Processing",
+    "query": "SELECT p.policy_id, p.premium_amount, c.claim_count FROM policy_data p LEFT JOIN (SELECT policy_id, COUNT(*) as claim_count FROM claims_data GROUP BY policy_id) c ON p.policy_id = c.policy_id WHERE JSON_EXTRACT(p.data, '$.policy.state') IN ('CA', 'TX')",
+    "execution_time_ms": 18000,
+    "frequency_per_hour": 20,
+    "severity": "high",
+    "context": {
+      "policy_table_rows": 2000000,
+      "claims_table_rows": 8000000,
+      "join_type": "LEFT JOIN with subquery",
+      "has_group_by": true,
+      "json_filter": true,
+      "description": "Multiple joins with aggregation and JSON filtering"
+    },
+    "root_causes": [
+      "Subquery in JOIN clause forces full scan of claims table",
+      "GROUP BY on large table is expensive",
+      "JSON filter applied after joins instead of before"
+    ],
+    "suggested_optimizations": [
+      "Pre-aggregate claims data in materialized view",
+      "Apply JSON filter before JOIN (move to WHERE)",
+      "Create index on claims_data.policy_id",
+      "Use window function instead of subquery: DENSE_RANK() OVER (PARTITION BY policy_id)"
+    ],
+    "expected_improvement_percent": 60
+  },
+  {
+    "case_id": 4,
+    "name": "High Frequency Query - Low Latency",
+    "query": "SELECT * FROM config_table WHERE key = ?",
+    "execution_time_ms": 2,
+    "frequency_per_hour": 50000,
+    "severity": "high",
+    "context": {
+      "table_rows": 50000,
+      "has_index": true,
+      "index_type": "PRIMARY KEY",
+      "cache_hit_rate": 0.35,
+      "description": "Fast query but called 50,000 times per hour = 100K ms total/hour overhead"
+    },
+    "root_causes": [
+      "Low individual latency (2ms) but massive cumulative impact",
+      "35% cache misses causing repeated DB hits",
+      "No application-level caching"
+    ],
+    "suggested_optimizations": [
+      "Implement Redis caching layer (99% cache hit target)",
+      "Use connection pooling to reduce overhead",
+      "Cache entire config table in application memory",
+      "Set cache TTL: 5-10 minutes for config table"
+    ],
+    "expected_improvement_percent": 95
+  },
+  {
+    "case_id": 5,
+    "name": "Nested Subquery - Multiple Levels",
+    "query": "SELECT * FROM policies WHERE premium_amount > (SELECT AVG(premium_amount) FROM policies WHERE state = (SELECT state FROM top_selling_states LIMIT 1))",
+    "execution_time_ms": 12000,
+    "frequency_per_hour": 15,
+    "severity": "medium",
+    "context": {
+      "nesting_levels": 3,
+      "subquery_repetition": "subqueries run for each outer row",
+      "table_rows": 1500000,
+      "description": "Correlated subqueries evaluated per outer row"
+    },
+    "root_causes": [
+      "Nested subqueries evaluated multiple times",
+      "Correlated subquery pattern is inefficient",
+      "No query plan optimization by optimizer"
+    ],
+    "suggested_optimizations": [
+      "Use EXPLAIN PLAN to verify optimizer behavior",
+      "Rewrite with JOIN: avoid nested subqueries",
+      "Use CTE (WITH clause): define intermediate results once",
+      "Example: WITH top_state AS (...), avg_premium AS (...) SELECT ..."
+    ],
+    "expected_improvement_percent": 75
+  },
+  {
+    "case_id": 6,
+    "name": "Aggregation with Multiple Joins",
+    "query": "SELECT p.state, COUNT(*) as policy_count, SUM(p.premium_amount) as total_premium, AVG(c.claim_amount) as avg_claim FROM policy_data p LEFT JOIN claims_data c ON p.policy_id = c.policy_id GROUP BY p.state HAVING COUNT(*) > 10",
+    "execution_time_ms": 22000,
+    "frequency_per_hour": 5,
+    "severity": "medium",
+    "context": {
+      "policy_table_rows": 2500000,
+      "claims_table_rows": 10000000,
+      "group_by_distinct_values": 50,
+      "description": "Complex aggregation across multiple tables"
+    },
+    "root_causes": [
+      "JOIN creates Cartesian product before grouping",
+      "Each policy can have multiple claims, multiplying rows",
+      "Heavy aggregation on large result set"
+    ],
+    "suggested_optimizations": [
+      "Pre-aggregate claims by policy: GROUP BY before JOIN",
+      "Use ONLY necessary columns in SELECT",
+      "Add index on (policy_id, claim_amount) for claims table",
+      "Materialize intermediate aggregations if repeated daily"
+    ],
+    "expected_improvement_percent": 55
+  },
+  {
+    "case_id": 7,
+    "name": "Logging Table Scan - Time Range Query",
+    "query": "SELECT * FROM application_logs WHERE timestamp BETWEEN '2024-01-01' AND '2024-01-31' AND log_level IN ('ERROR', 'CRITICAL')",
+    "execution_time_ms": 35000,
+    "frequency_per_hour": 25,
+    "severity": "high",
+    "context": {
+      "table_rows": 500000000,
+      "log_entries_per_day": 16000000,
+      "timestamp_index": true,
+      "log_level_index": false,
+      "partitioning": "no partition by date",
+      "description": "Large logging table scan with multiple filters"
+    },
+    "root_causes": [
+      "Table has 500M+ rows, no partitioning by date",
+      "Index on timestamp exists but combined with IN clause",
+      "No index on log_level column"
+    ],
+    "suggested_optimizations": [
+      "Partition table by DATE/MONTH on timestamp column",
+      "Create composite index: (timestamp, log_level)",
+      "Archive old logs to separate table/storage",
+      "Use UNION with separate indexes: (timestamp ASC, level=ERROR UNION level=CRITICAL)"
+    ],
+    "expected_improvement_percent": 80
+  },
+  {
+    "case_id": 8,
+    "name": "Anomaly: Latency Spike",
+    "query": "SELECT * FROM transaction_ledger WHERE account_id = ? AND created_date > DATE_SUB(NOW(), INTERVAL 7 DAY)",
+    "execution_time_ms": 50,
+    "average_execution_time_ms": 5,
+    "spike_multiple": 10,
+    "frequency_per_hour": 200,
+    "severity": "critical",
+    "context": {
+      "normal_latency_ms": 5,
+      "spike_latency_ms": 50,
+      "anomaly_window": "2024-01-15 14:32 to 14:45 UTC",
+      "affected_requests": 2000,
+      "description": "10x latency increase during specific time window"
+    },
+    "root_causes": [
+      "Table lock acquired by long-running BACKUP operation",
+      "Memory pressure: database buffer pool evicted",
+      "Index statistics outdated: query plan reverted to slow execution",
+      "Disk I/O spike: concurrent maintenance jobs"
+    ],
+    "suggested_optimizations": [
+      "Schedule BACKUP outside business hours",
+      "Implement query timeout (e.g., 10 second max)",
+      "Set up automated ANALYZE TABLE on schedule",
+      "Monitor: CPU, memory, disk I/O in correlation with latency",
+      "Add instance-level metrics: buffer pool hit ratio, active connections"
+    ],
+    "expected_improvement_percent": 90
+  },
+  {
+    "case_id": 9,
+    "name": "UPDATE with JOIN - Row Lock Contention",
+    "query": "UPDATE policies p JOIN claims c ON p.policy_id = c.policy_id SET p.status = 'CLOSED' WHERE c.resolved_date < DATE_SUB(NOW(), INTERVAL 90 DAY)",
+    "execution_time_ms": 8000,
+    "frequency_per_hour": 1,
+    "severity": "medium",
+    "context": {
+      "affected_rows_estimate": 50000,
+      "lock_wait_time_ms": 5000,
+      "concurrent_transactions": 150,
+      "description": "Batch update with join causing lock contention"
+    },
+    "root_causes": [
+      "UPDATE acquires locks on 50K rows",
+      "Concurrent transactions waiting for those row locks",
+      "No batching: updates 50K rows in single transaction"
+    ],
+    "suggested_optimizations": [
+      "Batch updates: process 1000 rows per transaction with COMMIT between batches",
+      "Add index on (resolved_date, policy_id) for faster JOIN",
+      "Use low_priority UPDATE to reduce blocking priority",
+      "Consider triggers or async job queue instead of synchronous update"
+    ],
+    "expected_improvement_percent": 60
+  },
+  {
+    "case_id": 10,
+    "name": "Knowledge Base Query - Configuration Driven System",
+    "query": "SELECT rule_id, condition_json, action_json FROM policy_rules WHERE product_type = ? AND region = ? AND status = 'ACTIVE' ORDER BY priority DESC LIMIT 50",
+    "execution_time_ms": 8,
+    "frequency_per_hour": 5000,
+    "severity": "high",
+    "context": {
+      "table_rows": 100000,
+      "composite_index": "(product_type, region, status)",
+      "matching_rows": 200,
+      "cache_mechanism": "none",
+      "description": "High-frequency lookup for configuration/rules"
+    },
+    "root_causes": [
+      "Index exists but 5000 QPS still stresses connection pool",
+      "No caching: rules are static, same result returned",
+      "Database connection overhead dominates"
+    ],
+    "suggested_optimizations": [
+      "Implement Redis cache: KEY = {product_type}:{region}:{status}",
+      "Load entire rules table into application memory at startup (100KB)",
+      "Use connection pooling with min_connections=20, max_connections=50",
+      "Set cache invalidation on rule table INSERT/UPDATE/DELETE triggers"
+    ],
+    "expected_improvement_percent": 98
+  }
+]
