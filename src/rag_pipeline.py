@@ -135,6 +135,7 @@ class RAGPipeline:
         
         context_parts = []
         for i, case in enumerate(cases, 1):
+            suggestions = case.get('suggested_optimizations', [])[:3]
             context_parts.append(f"""
 Case {i}: {case['name']}
 Query: {case['query']}
@@ -142,7 +143,7 @@ Execution Time: {case['execution_time_ms']}ms
 Frequency: {case['frequency_per_hour']}/hour
 Severity: {case['severity']}
 Root Causes: {', '.join(case.get('root_causes', []))}
-Suggested Optimizations: {', '.join(case.get('suggested_optimizations', [:3]))}
+Suggested Optimizations: {', '.join(suggestions)}
 Expected Improvement: {case.get('expected_improvement_percent', 0)}%
 Similarity Score: {case.get('similarity_score', 0):.2%}
 """)

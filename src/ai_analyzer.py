@@ -3,12 +3,14 @@ AI Analysis Layer: Gemini Integration
 Analyzes database queries and performance issues using Google Gemini API
 """
 import json
-import google.generativeai as genai
-from typing import Dict, Any
 import re
+from typing import Dict, Any
+
+from google import genai
+from google.genai import types
 from config import (
     GEMINI_API_KEY,
-    GEMINI_MODEL,
+    GEMINI_MODELS,
     SYSTEM_PROMPT,
     ANALYSIS_PROMPT_TEMPLATE,
     DEFAULT_CONFIDENCE,
@@ -21,11 +23,7 @@ class AIAnalyzer:
         if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
         
-        genai.configure(api_key=GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(
-            GEMINI_MODEL,
-            system_instruction=SYSTEM_PROMPT
-        )
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
 
     def analyze_query(self, user_query: str, context: str) -> Dict[str, Any]:
         """
@@ -45,8 +43,8 @@ class AIAnalyzer:
                 context=context
             )
             
-            # Call Gemini API
-            response = self.model.generate_content(prompt)
+            # Call Gemini API with fallback models for transient capacity issues
+            response = self._generate_content_with_fallback(prompt)
             response_text = response.text
             
             # Parse response
@@ -65,6 +63,30 @@ class AIAnalyzer:
                 "error": str(e),
                 "analysis": self._create_fallback_response(user_query, context),
             }
+
+    def _generate_content_with_fallback(self, prompt: str):
+        """Try multiple Gemini models so a temporary outage does not fail the request."""
+        last_error = None
+        for model_name in GEMINI_MODELS:
+            try:
+                return self.client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.2,
+                    ),
+                )
+            except Exception as exc:
+                last_error = exc
+                message = str(exc)
+                if "503" not in message and "UNAVAILABLE" not in message and "resource exhausted" not in message.lower():
+                    raise
+                print(f"Gemini model {model_name} unavailable, trying next fallback...")
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("No Gemini models available")
 
     def _parse_response(self, response_text: str) -> Dict[str, Any]:
         """
@@ -175,7 +197,7 @@ Check for:
 Respond with JSON: {{"valid": bool, "issues": [list], "confidence": "high/medium/low"}}"""
         
         try:
-            response = self.model.generate_content(prompt)
+            response = self._generate_content_with_fallback(prompt)
             return self._parse_response(response.text)
         except Exception as e:
             return {

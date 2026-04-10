@@ -8,7 +8,13 @@ load_dotenv()
 
 # Gemini API Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODELS = [
+	"gemini-2.5-flash",
+	"gemini-flash-latest",
+	"gemini-flash-lite-latest",
+	"gemini-2.0-flash-lite-001",
+]
+GEMINI_MODEL = GEMINI_MODELS[0]
 
 # Database Configuration
 CHROMA_PERSIST_DIR = "./data/chroma_db"
