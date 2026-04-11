@@ -92,11 +92,11 @@
   - Explicit JSON format request for parsing
   - Temperature: default (balanced)
 
-#### 3. **Main Orchestrator** (`src/main.py`)
-- Coordinates RAG → Embedding → LLM pipeline
-- Interactive mode for user queries
-- Batch mode for multiple queries
-- Formatted output and error handling
+#### 3. **API Orchestrator** (`src/main.py`)
+- Exposes FastAPI application for programmatic access
+- `POST /analyze/query` endpoint for analysis requests
+- `GET /health` endpoint for health checks
+- Typed request/response models for API documentation (OpenAPI)
 
 ---
 
@@ -197,16 +197,26 @@ Get your free Gemini API key:
 - Create new API key
 - Copy to `.env` file
 
-5. **Run Interactive Mode**
+5. **Run FastAPI Server**
 ```bash
-cd src
-python main.py
+python src/main.py
 ```
 
-6. **Run with Specific Queries** (Batch Mode)
+6. **Try API Endpoints**
 ```bash
-cd src
-python main.py "Why is SELECT * FROM policy_data slow?" "How to optimize JSON filtering?"
+curl http://127.0.0.1:8000/health
+
+curl -X POST http://127.0.0.1:8000/analyze/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Why is my JSON filtering query slow?"}'
+```
+
+7. **Open API Docs (Swagger UI)**
+- http://127.0.0.1:8000/docs
+
+8. **Run Streamlit Demo UI**
+```bash
+python -m streamlit run app.py
 ```
 
 ### Example Queries to Try
@@ -328,10 +338,10 @@ Production:
 
 #### 6. **User Experience**
 ```
-Current: CLI interface
+Current: FastAPI endpoints + Streamlit UI
 Production:
-- REST API for integrations
-- Web UI dashboard
+- Authenticated REST API for integrations
+- Rich web dashboard with historical trends
 - Export reports to PDF
 - Batch query processing
 - Query recommendations
@@ -456,38 +466,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 echo "GEMINI_API_KEY=your_key_here" > .env
 
-# Terminal 2: Run
-cd src
-python main.py
+# Terminal 2: Run API
+python src/main.py
 
-# In the app:
-> Your question: Why does JSON field filtering slow down my queries?
+# Terminal 3: Query API
+curl -X POST http://127.0.0.1:8000/analyze/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Why does JSON field filtering slow down my queries?"}'
 
-# Output:
-# ✓ Found 3 similar cases
-# 🤖 Analyzing with AI...
-# 
-# PERFORMANCE ANALYSIS REPORT
-# ═══════════════════════════════════════════════════════════════════════════════════
-#
-# 🔴 PROBLEM:
-#   JSON field filtering without index causes full table scans
-#
-# 🔍 ROOT CAUSES:
-#   • JSON_EXTRACT cannot use traditional indexes efficiently
-#   • High query frequency multiplies the overhead
-#   • Entire table must be scanned for JSON comparison
-#
-# 💡 OPTIMIZATION SUGGESTIONS:
-#   • Create generated column to store extracted JSON value
-#   • Index the generated column
-#   • Denormalize: store state directly in main table
-#   • Use JSON_TABLE for better query optimization
-#
-# 📊 METRICS:
-#   Priority: HIGH
-#   Confidence: HIGH
-#   Expected Improvement: 70%
+# Optional UI
+python -m streamlit run app.py
 ```
 
 ---
@@ -511,7 +499,7 @@ python main.py
 - [ ] Support for multiple DB engines (PostgreSQL, MySQL, Oracle)
 
 ### Phase 3: Production Ready
-- [ ] REST API wrapper
+- [x] REST API wrapper (FastAPI)
 - [ ] Web dashboard UI
 - [ ] Batch query processor
 - [ ] Performance baseline tracking
@@ -543,4 +531,4 @@ Built for Solartis AI Engineering Internship Challenge
 
 ---
 
-**Ready to optimize database queries? Start with `python main.py`** 🚀
+**Ready to optimize database queries? Start with `python src/main.py` for API or `python -m streamlit run app.py` for UI.** 🚀
