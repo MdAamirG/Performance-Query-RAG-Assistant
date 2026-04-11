@@ -95,6 +95,7 @@
 #### 3. **API Orchestrator** (`src/main.py`)
 - Exposes FastAPI application for programmatic access
 - `POST /analyze/query` endpoint for analysis requests
+- `POST /detect/anomaly` endpoint for anomaly checks
 - `GET /health` endpoint for health checks
 - Typed request/response models for API documentation (OpenAPI)
 
@@ -210,6 +211,10 @@ curl http://127.0.0.1:8000/health
 curl -X POST http://127.0.0.1:8000/analyze/query \
   -H "Content-Type: application/json" \
   -d '{"query":"Why is my JSON filtering query slow?"}'
+
+curl -X POST http://127.0.0.1:8000/detect/anomaly \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Latency suddenly spiked from 1s to 50s"}'
 ```
 
 7. **Open API Docs (Swagger UI)**
@@ -237,13 +242,13 @@ python -m streamlit run app.py
 The system is tested with 10 diverse performance scenarios:
 
 ```bash
-# Test retrieval
-python -c "from src.rag_pipeline import RAGPipeline; rag = RAGPipeline(); cases = rag.retrieve_similar_cases('slow query'); print(f'Retrieved {len(cases)} cases')"
+# Run unit tests
+python -m pytest -q
 
-# List all cases
-cd src
-python main.py
-# Type: list
+# API smoke tests
+curl http://127.0.0.1:8000/health
+curl -X POST http://127.0.0.1:8000/analyze/query -H "Content-Type: application/json" -d '{"query":"Why is this query slow?"}'
+curl -X POST http://127.0.0.1:8000/detect/anomaly -H "Content-Type: application/json" -d '{"query":"Is this an anomaly?"}'
 ```
 
 ### Expected Behavior

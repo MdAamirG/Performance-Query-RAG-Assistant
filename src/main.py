@@ -55,8 +55,55 @@ class PerformanceAnalysisSystem:
         
         return result
 
+    def detect_anomaly(self, user_query: str) -> Dict[str, Any]:
+        """Lightweight anomaly detector using query intent and nearest known cases."""
+        similar_cases = self.rag.retrieve_similar_cases(user_query, k=3)
+        query_text = user_query.lower()
+
+        anomaly_terms = ["anomaly", "spike", "sudden", "abnormal", "regression"]
+        query_signals = sum(1 for term in anomaly_terms if term in query_text)
+
+        best_case_name = None
+        best_similarity = 0.0
+        case_signals = 0
+        for case in similar_cases:
+            case_name = str(case.get("name", ""))
+            similarity = float(case.get("similarity_score", 0))
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_case_name = case_name
+
+            case_text = (
+                case_name
+                + " "
+                + " ".join(case.get("root_causes", []))
+                + " "
+                + str(case.get("context", {}).get("description", ""))
+            ).lower()
+            case_signals += sum(1 for term in anomaly_terms if term in case_text)
+
+        is_anomaly = (query_signals > 0 and best_similarity >= 0.35) or case_signals > 0
+        confidence = "high" if best_similarity >= 0.65 else "medium" if best_similarity >= 0.4 else "low"
+
+        reason = (
+            f"Query/case anomaly signals={query_signals + case_signals}, "
+            f"best_similarity={best_similarity:.2f}, matched_case={best_case_name or 'none'}."
+        )
+
+        return {
+            "status": "success",
+            "is_anomaly": is_anomaly,
+            "confidence": confidence,
+            "reason": reason,
+            "matched_case": best_case_name,
+        }
+
 
 class QueryRequest(BaseModel):
+    query: str
+
+
+class AnomalyRequest(BaseModel):
     query: str
 
 
@@ -94,6 +141,14 @@ class RootResponse(BaseModel):
     message: str
     docs: str
     health: str
+
+
+class AnomalyResponse(BaseModel):
+    status: str
+    is_anomaly: bool
+    confidence: str
+    reason: str
+    matched_case: Optional[str] = None
 
 
 app = FastAPI(title="Solartis Performance Analyzer API")
@@ -141,6 +196,26 @@ def analyze_query(request: QueryRequest) -> AnalyzeQueryResponse:
     try:
         response = get_system().analyze_query(user_query)
         return AnalyzeQueryResponse.model_validate(response)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post(
+    "/detect/anomaly",
+    response_model=AnomalyResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Bad Request"},
+        500: {"model": ErrorResponse, "description": "Internal Server Error"},
+    },
+)
+def detect_anomaly(request: AnomalyRequest) -> AnomalyResponse:
+    user_query = request.query.strip()
+    if not user_query:
+        raise HTTPException(status_code=400, detail="query must not be empty")
+
+    try:
+        response = get_system().detect_anomaly(user_query)
+        return AnomalyResponse.model_validate(response)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

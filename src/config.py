@@ -2,6 +2,7 @@
 Configuration and constants for the AI System
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,8 +18,9 @@ GEMINI_MODELS = [
 GEMINI_MODEL = GEMINI_MODELS[0]
 
 # Database Configuration
-CHROMA_PERSIST_DIR = "./data/chroma_db"
-DATASET_PATH = "./data/performance_cases.json"
+BASE_DIR = Path(__file__).resolve().parent.parent
+CHROMA_PERSIST_DIR = str(BASE_DIR / "data" / "chroma_db")
+DATASET_PATH = str(BASE_DIR / "data" / "performance_cases.json")
 
 # Embedding Model
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
