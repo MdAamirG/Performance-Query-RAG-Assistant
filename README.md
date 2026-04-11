@@ -45,7 +45,7 @@
 │   AI Analysis (Gemini)          │
 │  • System prompt for expertise  │
 │  • Query + context in prompt    │
-│  • JSON response parsing        │
+│  • Strict structured parsing    │
 └────────────┬────────────────────┘
              │
              ▼
@@ -90,7 +90,7 @@
   - System prompt establishes expertise context
   - User query + retrieved cases in prompt
   - Explicit JSON format request for parsing
-  - Temperature: default (balanced)
+  - Temperature: 0.2 (low-variance, stable output)
 
 #### 3. **API Orchestrator** (`src/main.py`)
 - Exposes FastAPI application for programmatic access
@@ -266,7 +266,7 @@ curl -X POST http://127.0.0.1:8000/detect/anomaly -H "Content-Type: application/
 #### 1. Unit Test Result
 ```bash
 $ python -m pytest -q
-........                                                                                  [100%]
+.............                                                                             [100%]
 13 passed
 ```
 
