@@ -202,13 +202,14 @@ Get your free Gemini API key:
 5. **Run FastAPI Server**
 ```bash
 python src/main.py
-# If port 8000 is busy:
-python -m uvicorn src.main:app --host 127.0.0.1 --port 8001
 ```
+
+If `8000` is already in use, the script automatically selects the next free local port and prints it in the terminal.
+Use that printed port for every API request example below.
 
 6. **Try API Endpoints**
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/health   # replace 8000 with the printed port if needed
 
 curl -X POST http://127.0.0.1:8000/analyze/query \
   -H "Content-Type: application/json" \
@@ -220,7 +221,7 @@ curl -X POST http://127.0.0.1:8000/detect/anomaly \
 ```
 
 7. **Open API Docs (Swagger UI)**
-- http://127.0.0.1:8000/docs
+- http://127.0.0.1:8000/docs  (replace 8000 with the printed port if needed)
 
 8. **Run Streamlit Demo UI**
 ```bash
@@ -248,6 +249,7 @@ The system is tested with 10 diverse performance scenarios:
 python -m pytest -q
 
 # API smoke tests
+# Use the port printed by `python src/main.py` if it is not 8000
 curl http://127.0.0.1:8000/health
 curl -X POST http://127.0.0.1:8000/analyze/query -H "Content-Type: application/json" -d '{"query":"Why is this query slow?"}'
 curl -X POST http://127.0.0.1:8000/detect/anomaly -H "Content-Type: application/json" -d '{"query":"Is this an anomaly?"}'
@@ -622,4 +624,4 @@ Built for Solartis AI Engineering Internship Challenge
 
 ---
 
-**Ready to optimize database queries? Start with `python src/main.py` for API or `python -m streamlit run app.py` for UI.** 🚀
+**Ready to optimize database queries? Start with `python src/main.py` for API or `python -m streamlit run app.py` for UI. If `8000` is busy, use the port printed in the terminal.** 🚀

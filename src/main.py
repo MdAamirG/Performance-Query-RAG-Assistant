@@ -3,6 +3,7 @@ Main Application: Orchestrates RAG Pipeline + AI Analysis
 End-to-End performance query analysis system
 """
 from contextlib import asynccontextmanager
+import socket
 from typing import Dict, Any, List, Optional
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -228,4 +229,16 @@ def detect_anomaly(request: AnomalyRequest) -> AnomalyResponse:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
+    preferred_port = 8000
+
+    for candidate_port in range(preferred_port, preferred_port + 11):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(("127.0.0.1", candidate_port))
+            except OSError:
+                continue
+            preferred_port = candidate_port
+            break
+
+    uvicorn.run(app, host="127.0.0.1", port=preferred_port, reload=False)
