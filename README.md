@@ -173,7 +173,7 @@ Each case includes:
 
 1. **Clone and Navigate**
 ```bash
-git clone <your-github-repo-link>
+git clone https://github.com/MdAamirG/solartis.git
 cd solartis
 ```
 
@@ -202,6 +202,8 @@ Get your free Gemini API key:
 5. **Run FastAPI Server**
 ```bash
 python src/main.py
+# If port 8000 is busy:
+python -m uvicorn src.main:app --host 127.0.0.1 --port 8001
 ```
 
 6. **Try API Endpoints**
@@ -265,7 +267,7 @@ curl -X POST http://127.0.0.1:8000/detect/anomaly -H "Content-Type: application/
 ```bash
 $ python -m pytest -q
 ........                                                                                  [100%]
-8 passed
+13 passed
 ```
 
 #### 2. API Result Samples

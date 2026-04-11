@@ -73,3 +73,25 @@ def test_analyze_query_endpoint_validation(client):
     response = client.post("/analyze/query", json={"query": "   "})
     assert response.status_code == 400
     assert response.json() == {"detail": "query must not be empty"}
+
+
+def test_startup_and_analyze_integration_path(monkeypatch):
+    """Exercise app startup + health + analyze in one integration-style path."""
+    init_calls = {"count": 0}
+
+    class StartupFakeSystem(FakeSystem):
+        def __init__(self):
+            init_calls["count"] += 1
+
+    monkeypatch.setattr(main_module, "PerformanceAnalysisSystem", StartupFakeSystem)
+
+    with TestClient(main_module.app) as test_client:
+        health = test_client.get("/health")
+        assert health.status_code == 200
+        assert health.json() == {"status": "ok"}
+
+        analyze = test_client.post("/analyze/query", json={"query": "Why is this query slow?"})
+        assert analyze.status_code == 200
+        assert analyze.json()["status"] == "success"
+
+    assert init_calls["count"] >= 1
