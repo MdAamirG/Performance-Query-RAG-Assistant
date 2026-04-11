@@ -7,14 +7,25 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any
 import os
-from config import (
-    CHROMA_PERSIST_DIR,
-    DATASET_PATH,
-    EMBEDDING_MODEL,
-    COLLECTION_NAME,
-    TOP_K_RESULTS,
-    SIMILARITY_THRESHOLD,
-)
+
+try:
+    from .config import (
+        CHROMA_PERSIST_DIR,
+        DATASET_PATH,
+        EMBEDDING_MODEL,
+        COLLECTION_NAME,
+        TOP_K_RESULTS,
+        SIMILARITY_THRESHOLD,
+    )
+except ImportError:
+    from config import (
+        CHROMA_PERSIST_DIR,
+        DATASET_PATH,
+        EMBEDDING_MODEL,
+        COLLECTION_NAME,
+        TOP_K_RESULTS,
+        SIMILARITY_THRESHOLD,
+    )
 
 
 class RAGPipeline:

@@ -2,12 +2,18 @@
 Main Application: Orchestrates RAG Pipeline + AI Analysis
 End-to-End performance query analysis system
 """
+from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict
-from rag_pipeline import RAGPipeline
-from ai_analyzer import AIAnalyzer
+
+try:
+    from .rag_pipeline import RAGPipeline
+    from .ai_analyzer import AIAnalyzer
+except ImportError:
+    from rag_pipeline import RAGPipeline
+    from ai_analyzer import AIAnalyzer
 
 
 class PerformanceAnalysisSystem:
@@ -151,12 +157,13 @@ class AnomalyResponse(BaseModel):
     matched_case: Optional[str] = None
 
 
-app = FastAPI(title="Solartis Performance Analyzer API")
-
-
-@app.on_event("startup")
-def startup_event() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     app.state.system = PerformanceAnalysisSystem()
+    yield
+
+
+app = FastAPI(title="Solartis Performance Analyzer API", lifespan=lifespan)
 
 
 def get_system() -> PerformanceAnalysisSystem:

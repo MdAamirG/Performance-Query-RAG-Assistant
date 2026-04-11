@@ -10,13 +10,23 @@ from google.genai import types
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel
-from config import (
-    GEMINI_API_KEY,
-    GEMINI_MODELS,
-    SYSTEM_PROMPT,
-    ANALYSIS_PROMPT_TEMPLATE,
-    DEFAULT_CONFIDENCE,
-)
+
+try:
+    from .config import (
+        GEMINI_API_KEY,
+        GEMINI_MODELS,
+        SYSTEM_PROMPT,
+        ANALYSIS_PROMPT_TEMPLATE,
+        DEFAULT_CONFIDENCE,
+    )
+except ImportError:
+    from config import (
+        GEMINI_API_KEY,
+        GEMINI_MODELS,
+        SYSTEM_PROMPT,
+        ANALYSIS_PROMPT_TEMPLATE,
+        DEFAULT_CONFIDENCE,
+    )
 
 
 class PerformanceAnalysis(BaseModel):

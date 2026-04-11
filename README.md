@@ -259,6 +259,85 @@ curl -X POST http://127.0.0.1:8000/detect/anomaly -H "Content-Type: application/
 5. Response parsed to JSON
 6. Formatted output shown to user
 
+### Execution Proof (Reviewer Quick Check)
+
+#### 1. Unit Test Result
+```bash
+$ python -m pytest -q
+........                                                                                  [100%]
+8 passed
+```
+
+#### 2. API Result Samples
+
+Swagger UI (interactive API docs):
+```bash
+$ curl -i http://127.0.0.1:8000/docs
+HTTP/1.1 200 OK
+```
+
+Open in browser: http://127.0.0.1:8000/docs
+
+OpenAPI schema endpoint list:
+```bash
+$ curl -s http://127.0.0.1:8000/openapi.json
+
+paths:
+- /
+- /health
+- /analyze/query
+- /detect/anomaly
+```
+
+Health check:
+```bash
+$ curl -i http://127.0.0.1:8000/health
+HTTP/1.1 200 OK
+
+{"status":"ok"}
+```
+
+Performance analysis:
+```bash
+$ curl -X POST http://127.0.0.1:8000/analyze/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Why is my JSON filtering query slow?"}'
+
+{
+  "status": "success",
+  "analysis": {
+    "problem": "Slow query performance due to JSON field filtering without index",
+    "root_causes": ["..."],
+    "suggestions": ["..."],
+    "confidence": "high",
+    "expected_improvement": "70%"
+  }
+}
+```
+
+Anomaly detection:
+```bash
+$ curl -X POST http://127.0.0.1:8000/detect/anomaly \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Latency suddenly spiked from 1 sec to 50 sec"}'
+
+{
+  "status": "success",
+  "is_anomaly": true,
+  "confidence": "medium",
+  "reason": "Query/case anomaly signals=..., best_similarity=...",
+  "matched_case": "Anomaly: Latency Spike."
+}
+```
+
+#### 3. Streamlit UI Validation
+- UI launches successfully with `python -m streamlit run app.py`
+- Sidebar sample queries load and can be selected
+- Analyze action returns:
+  - Structured analysis (problem, causes, suggestions, confidence)
+  - Retrieved similar cases with similarity scores
+  - Raw JSON output in expandable view
+
 ---
 
 ## 🎛 Configuration
