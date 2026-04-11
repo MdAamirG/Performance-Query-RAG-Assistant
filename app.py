@@ -61,7 +61,11 @@ if run_button and query.strip():
         st.markdown(f"**Problem:** {analysis.get('problem', 'N/A')}")
         st.markdown(f"**Priority:** {analysis.get('priority', 'N/A').upper()}")
         st.markdown(f"**Confidence:** {analysis.get('confidence', 'N/A').upper()}")
-        st.markdown(f"**Expected Improvement:** {analysis.get('expected_improvement_percent', 0)}%")
+        expected_improvement = analysis.get("expected_improvement")
+        if expected_improvement:
+            st.markdown(f"**Expected Improvement:** {expected_improvement}")
+        else:
+            st.markdown(f"**Expected Improvement:** {analysis.get('expected_improvement_percent', 0)}%")
 
         st.markdown("### Root Causes")
         for cause in analysis.get("root_causes", []):

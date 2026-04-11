@@ -68,6 +68,7 @@ class AnalysisPayload(BaseModel):
     suggestions: List[str] = []
     confidence: Optional[str] = None
     priority: Optional[str] = None
+    expected_improvement: Optional[str] = None
     expected_improvement_percent: Optional[float] = None
     reasoning: Optional[str] = None
 
@@ -89,8 +90,34 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
+class RootResponse(BaseModel):
+    message: str
+    docs: str
+    health: str
+
+
 app = FastAPI(title="Solartis Performance Analyzer API")
-system = PerformanceAnalysisSystem()
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    app.state.system = PerformanceAnalysisSystem()
+
+
+def get_system() -> PerformanceAnalysisSystem:
+    system = getattr(app.state, "system", None)
+    if system is None:
+        raise RuntimeError("PerformanceAnalysisSystem is not initialized")
+    return system
+
+
+@app.get("/", response_model=RootResponse)
+def root() -> RootResponse:
+    return RootResponse(
+        message="Solartis API is running",
+        docs="/docs",
+        health="/health",
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -112,11 +139,11 @@ def analyze_query(request: QueryRequest) -> AnalyzeQueryResponse:
         raise HTTPException(status_code=400, detail="query must not be empty")
 
     try:
-        response = system.analyze_query(user_query)
+        response = get_system().analyze_query(user_query)
         return AnalyzeQueryResponse.model_validate(response)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

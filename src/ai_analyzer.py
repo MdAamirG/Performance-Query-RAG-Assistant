@@ -3,11 +3,13 @@ AI Analysis Layer: Gemini Integration
 Analyzes database queries and performance issues using Google Gemini API
 """
 import json
-import re
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from google import genai
 from google.genai import types
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
+from pydantic import BaseModel
 from config import (
     GEMINI_API_KEY,
     GEMINI_MODELS,
@@ -17,6 +19,14 @@ from config import (
 )
 
 
+class PerformanceAnalysis(BaseModel):
+    problem: str
+    root_causes: List[str]
+    suggestions: List[str]
+    confidence: str
+    expected_improvement: str
+
+
 class AIAnalyzer:
     def __init__(self):
         """Initialize Gemini API client"""
@@ -24,6 +34,14 @@ class AIAnalyzer:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
         
         self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.parser = PydanticOutputParser(pydantic_object=PerformanceAnalysis)
+        self.prompt_template = PromptTemplate(
+            template=ANALYSIS_PROMPT_TEMPLATE,
+            input_variables=["query", "context"],
+            partial_variables={
+                "format_instructions": self.parser.get_format_instructions(),
+            },
+        )
 
     def analyze_query(self, user_query: str, context: str) -> Dict[str, Any]:
         """
@@ -38,17 +56,17 @@ class AIAnalyzer:
         """
         try:
             # Prepare the prompt
-            prompt = ANALYSIS_PROMPT_TEMPLATE.format(
+            prompt = self.prompt_template.format(
                 query=user_query,
-                context=context
+                context=context,
             )
             
             # Call Gemini API with fallback models for transient capacity issues
             response = self._generate_content_with_fallback(prompt)
-            response_text = response.text
+            response_text = response.text or ""
             
-            # Parse response
-            analysis = self._parse_response(response_text)
+            # Parse response with strict schema validation
+            analysis = self.parser.parse(response_text).model_dump()
             
             return {
                 "status": "success",
@@ -88,80 +106,6 @@ class AIAnalyzer:
             raise last_error
         raise RuntimeError("No Gemini models available")
 
-    def _parse_response(self, response_text: str) -> Dict[str, Any]:
-        """
-        Extract structured JSON from Gemini response
-        Handles cases where JSON might be wrapped in markdown code blocks
-        """
-        try:
-            # Try to extract JSON from markdown code blocks
-            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', response_text)
-            if json_match:
-                json_str = json_match.group(1).strip()
-                return json.loads(json_str)
-            
-            # Try direct JSON parsing
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start >= 0 and json_end > json_start:
-                return json.loads(response_text[json_start:json_end])
-            
-            # Fallback: create structured response from text
-            return self._parse_text_response(response_text)
-        
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
-            return self._parse_text_response(response_text)
-
-    def _parse_text_response(self, text: str) -> Dict[str, Any]:
-        """Parse unstructured text response into structured format"""
-        return {
-            "problem": self._extract_section(text, "Problem", "likely performance issue"),
-            "root_causes": self._extract_list(text, "Root Cause"),
-            "suggestions": self._extract_list(text, "Optimization"),
-            "confidence": DEFAULT_CONFIDENCE,
-            "expected_improvement_percent": 50,
-            "priority": "high",
-            "reasoning": text[:500] + "..." if len(text) > 500 else text,
-        }
-
-    def _extract_section(self, text: str, keyword: str, default: str = "") -> str:
-        """Extract section from text after a keyword"""
-        lines = text.split('\n')
-        found = False
-        for i, line in enumerate(lines):
-            if keyword.lower() in line.lower():
-                found = True
-                # Get the next non-empty line
-                for j in range(i + 1, len(lines)):
-                    if lines[j].strip():
-                        return lines[j].strip()
-                break
-        return default
-
-    def _extract_list(self, text: str, keyword: str) -> list:
-        """Extract list items after a keyword"""
-        items = []
-        lines = text.split('\n')
-        found = False
-        
-        for i, line in enumerate(lines):
-            if keyword.lower() in line.lower():
-                found = True
-                continue
-            
-            if found:
-                # Stop at next section header or empty after collecting items
-                if line.startswith('#') or line.startswith('**'):
-                    break
-                if line.strip().startswith('- ') or line.strip().startswith('• '):
-                    items.append(line.strip()[2:].strip())
-                elif line.strip() and not line.startswith(' '):
-                    if len(items) > 0:
-                        break
-        
-        return items if items else ["Unable to extract suggestions"]
-
     def _create_fallback_response(self, query: str, context: str) -> Dict[str, Any]:
         """Create a fallback response when API fails"""
         return {
@@ -177,10 +121,8 @@ class AIAnalyzer:
                 "Consider query restructuring or denormalization",
                 "Implement caching for frequently accessed data",
             ],
-            "confidence": "low",
-            "expected_improvement_percent": 30,
-            "priority": "medium",
-            "reasoning": f"Fallback response: Unable to analyze specific query. Please review database logs and consider: {context[:200]}",
+            "confidence": DEFAULT_CONFIDENCE,
+            "expected_improvement": "Moderate improvement expected with indexing and query tuning.",
         }
 
     def evaluate_query_correctness(self, query: str) -> Dict[str, Any]:
@@ -198,7 +140,7 @@ Respond with JSON: {{"valid": bool, "issues": [list], "confidence": "high/medium
         
         try:
             response = self._generate_content_with_fallback(prompt)
-            return self._parse_response(response.text)
+            return json.loads(response.text or "{}")
         except Exception as e:
             return {
                 "valid": True,

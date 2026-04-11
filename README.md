@@ -81,7 +81,7 @@
   - Format as context for LLM
 
 #### 2. **AI Analysis** (`src/ai_analyzer.py`)
-- **LLM:** Google Gemini API (Flash 1.5 model)
+- **LLM:** Google Gemini API (`gemini-2.5-flash`)
   - Fast inference (~1-2 seconds)
   - Good understanding of technical content
   - Structured JSON output
@@ -172,7 +172,8 @@ Each case includes:
 
 1. **Clone and Navigate**
 ```bash
-cd /Users/mohamedaamir/Desktop/solartis
+git clone <your-github-repo-link>
+cd solartis
 ```
 
 2. **Create Virtual Environment** (Recommended)
@@ -282,6 +283,7 @@ Edit `src/config.py` to customize:
 - **LLM:** Gemini Flash (free/fast) vs. Claude (more accurate)
 - **Caching:** No caching of embeddings/responses yet
 - **Error Handling:** Basic fallback vs. sophisticated retry logic
+- **LLM Choice (SLM Bonus):** I considered running a local SLM like Llama 3 (via Ollama) to hit the bonus criteria. However, I prioritized using the Gemini Flash API to ensure high-speed inference and highly reliable strict JSON adherence, which is critical for a stable, mock-API-ready prototype built within a 72-hour window.
 
 ### What I Would Change for Production
 
@@ -292,6 +294,7 @@ Production: 10,000+ cases, Pinecone/Weaviate
 - Distributed vector DB for speed
 - Caching layer (Redis) for embeddings
 - Query batching for concurrent users
+- Hybrid Search Implementation: Pure vector (cosine) search struggles with exact syntax (like specific table names e.g., `policy_data` or exact SQL commands). For production, I would implement Hybrid Search—combining BM25 (keyword search) with vector embeddings—to ensure both exact match and semantic intent are captured.
 ```
 
 #### 2. **Reliability**
@@ -355,7 +358,7 @@ Production:
 - Async task queue (Celery)
 - Load balancing
 - Auto-scaling for concurrent users
-- APICalling patterns standardized
+- API calling patterns standardized
 ```
 
 ---
@@ -367,9 +370,10 @@ Production:
 | Language | Python 3.10+ | Rapid prototyping, LLM libraries |
 | Embeddings | sentence-transformers | Fast, local, no GPU needed |
 | Vector DB | Chroma | Simple, persistent, local |
-| LLM | Google Gemini API | Free tier, good performance |
+| LLM | Google Gemini API (`gemini-2.5-flash`) | Free tier, good performance |
+| API Layer | FastAPI | Clean REST API with automatic OpenAPI docs |
 | Data | JSON | Human-readable, easy to update |
-| Parsing | Pydantic (optional) | Type validation |
+| Parsing | Pydantic | Strict schema validation for API and LLM outputs |
 
 ---
 
@@ -410,7 +414,7 @@ Production:
 
 ### Challenges Faced
 1. **JSON Parsing:** Gemini sometimes returns wrapped JSON or markdown blocks
-   - **Solution:** Regex extraction + try/catch parsing
+  - **Solution:** Integrated LangChain's PydanticOutputParser to enforce a strict JSON schema at the API level, eliminating the need for brittle regex parsing
    
 2. **Response Consistency:** LLM responses varied in structure
    - **Solution:** Explicit system prompt + JSON format instructions
@@ -460,7 +464,7 @@ Production:
 
 ```bash
 # Terminal 1: Setup
-cd /Users/mohamedaamir/Desktop/solartis
+cd solartis
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -527,7 +531,7 @@ This system demonstrates:
 ## 📄 License
 
 Built for Solartis AI Engineering Internship Challenge
-2024
+2026
 
 ---
 

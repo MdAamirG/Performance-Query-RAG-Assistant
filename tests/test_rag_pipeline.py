@@ -6,14 +6,16 @@ import sys
 import os
 import json
 
+import pytest
+
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from rag_pipeline import RAGPipeline
 
 
-def test_rag_initialization():
-    """Test RAG pipeline initialization"""
+def create_rag_pipeline():
+    """Create a RAG pipeline instance for tests and standalone execution"""
     print("\n" + "=" * 80)
     print("TEST 1: RAG Pipeline Initialization")
     print("=" * 80)
@@ -25,6 +27,18 @@ def test_rag_initialization():
     except Exception as e:
         print(f"✗ Failed to initialize RAG: {e}")
         return None
+
+
+@pytest.fixture(scope="module")
+def rag():
+    rag_instance = create_rag_pipeline()
+    assert rag_instance is not None, "Failed to initialize RAG pipeline"
+    return rag_instance
+
+
+def test_rag_initialization(rag):
+    """Test RAG pipeline initialization"""
+    assert rag is not None
 
 
 def test_dataset_loading(rag):
@@ -45,8 +59,6 @@ def test_dataset_loading(rag):
     print("\nSample cases:")
     for case in cases[:3]:
         print(f"  Case {case['case_id']}: {case['name']}")
-    
-    return cases
 
 
 def test_query_retrieval(rag):
@@ -170,7 +182,7 @@ def run_all_tests():
     print("=" * 80)
     
     # Test 1: Initialize
-    rag = test_rag_initialization()
+    rag = create_rag_pipeline()
     if not rag:
         print("\n❌ Tests failed: Cannot initialize RAG")
         return False

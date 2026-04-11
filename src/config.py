@@ -50,21 +50,11 @@ USER QUERY: {query}
 CONTEXT FROM SIMILAR CASES:
 {context}
 
-Please provide:
-1. **Problem Identification**: What performance issue is this?
-2. **Root Cause Analysis**: Why is this happening?
-3. **Specific Optimizations**: What exact steps should be taken?
-4. **Expected Improvement**: Estimated % improvement in latency
-5. **Priority**: How urgent is this to fix?
+Provide a concise analysis of the likely issue and optimizations.
 
-Format your response as JSON with these exact keys:
-- problem
-- root_causes (list of 2-3 causes)
-- suggestions (list of 3-5 specific actions)
-- confidence (high/medium/low)
-- expected_improvement_percent
-- priority (critical/high/medium/low)
-- reasoning (brief explanation)"""
+Follow these format instructions exactly:
+{format_instructions}
+"""
 
 # Retrieval Configuration
 TOP_K_RESULTS = 3
