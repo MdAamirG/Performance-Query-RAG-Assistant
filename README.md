@@ -1,4 +1,4 @@
-# Solartis AI Performance Analysis System
+#   AI Performance Analysis System
 
 > A RAG-powered database performance analyzer that understands natural language queries and provides intelligent optimizations using vector retrieval and AI analysis.
 
@@ -11,7 +11,7 @@
 2. **Augments** those cases as context for AI analysis
 3. **Generates** structured, actionable recommendations using Google Gemini
 
-**Real-World Context:** Solartis' Policy Administration System (PAS) processes complex queries involving policy data, claims, and JSON-based configurations. Performance issues require understanding both query patterns and database architecture.
+**Real-World Context:** Policy Administration System (PAS) processes complex queries involving policy data, claims, and JSON-based configurations. Performance issues require understanding both query patterns and database architecture.
 
 ---
 
@@ -173,8 +173,8 @@ Each case includes:
 
 1. **Clone and Navigate**
 ```bash
-git clone https://github.com/MdAamirG/solartis.git
-cd solartis
+git clone https://github.com/MdAamirG/Performance-Query-RAG-Assistant.git
+cd Performance-Query-RAG-Assistant
 ```
 
 2. **Create Virtual Environment** (Recommended)
@@ -552,7 +552,7 @@ Production:
 
 ```bash
 # Terminal 1: Setup
-cd solartis
+cd Performance-Query-RAG-Assistant
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -614,13 +614,6 @@ This system demonstrates:
 - ✅ **Implementation:** Working end-to-end system
 - ✅ **Thinking:** Documented decisions and improvements
 - ✅ **Communication:** Clear code, architecture diagrams, comprehensive README
-
----
-
-## 📄 License
-
-Built for Solartis AI Engineering Internship Challenge
-2026
 
 ---
 
